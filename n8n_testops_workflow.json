@@ -1,0 +1,200 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fae0f264-768c-4b21-8b2a-1299a122219e",
+      "name": "Webhook",
+      "webhookId": "c0643f14-8476-4317-bac7-a77aeb6c9328"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d6a9e6bf-efed-416a-9757-ac6f0ad97192",
+              "leftValue": null,
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f7160d83-ee07-47f7-bd6f-706f8d937e82",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "issueType": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "summary": "[Auto-Bug] {{$node[\"Webhook\"].json[\"project\"]}} - Test Failed",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "c6799e16-6ded-42aa-9ae0-801c8038dafa",
+      "name": "Create an issue"
+    },
+    {
+      "parameters": {
+        "text": "=🚨 *Test Automation Failure Detected* 🚨  *Project:* Parkly QA Automation *Environment:* Docker Local *Summary:* - Total Tests: {{ $json.results.total }} - Passed: {{ $json.results.passed }} - Failed: {{ $json.results.failed }} 🔴  *Status:* FAILED *Action Required:* Please check the automation logs in the 'logs' folder for the full Stack Trace.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "40763291-5293-4da0-82e1-746bbbc3ceef",
+      "name": "Send a message",
+      "webhookId": "35f0d2df-5b5b-4dcc-bf69-96335834795f"
+    },
+    {
+      "parameters": {
+        "text": "=✅ *Test Automation Passed* ✅  *Project:* Parkly QA Automation *Environment:* Docker Local *Result:* All tests completed successfully ({{ $json.results.total }}/{{ $json.results.total }}).  *Status:* SUCCESS _Environment is stable and ready for the next deployment._",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        624,
+        96
+      ],
+      "id": "66281ea9-33be-4b9f-b9ad-9027046b62a5",
+      "name": "Send a message1",
+      "webhookId": "c1718dfb-a51d-4b01-a860-4857629e339f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://loki-server:3100/loki/api/v1/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"streams\": [\n    {\n      \"stream\": {\n        \"job\": \"pytest_automation\",\n        \"env\": \"{{ $json.environment }}\",\n        \"status\": \"{{ $json.status }}\"\n      },\n      \"values\": [\n        [ \n          \"{{ Math.floor(Date.now() * 1000000).toString() }}\", \n          \"Test summary for {{ $json.project }}: {{ $json.results.passed }} passed, {{ $json.results.failed }} failed\" \n        ]\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f2bbbe2c-1461-46e1-bd9f-7bc20daed247",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create an issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an issue": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "606ba40b-9915-4f85-ba00-e5401af2fee0",
+  "meta": {
+    "instanceId": "e4e06e806db32ac570148bfdbde172f94d5267584c9a794ecb3ad546eed6a154"
+  },
+  "id": "zDv1vZUoNsuYmsON",
+  "tags": []
+}
